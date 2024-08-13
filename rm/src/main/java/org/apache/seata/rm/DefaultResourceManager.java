@@ -48,6 +48,8 @@ public class DefaultResourceManager implements ResourceManager {
     }
 
     /**
+     * 梳理哪些归属于对应的Client对象
+     * 指定
      * Get resource manager.
      *
      * @return the resource manager

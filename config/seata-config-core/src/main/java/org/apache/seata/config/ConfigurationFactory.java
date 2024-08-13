@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The type Configuration factory.
+ * 读取文件中的类型，进行对应的配置
  *
  */
 public final class ConfigurationFactory {

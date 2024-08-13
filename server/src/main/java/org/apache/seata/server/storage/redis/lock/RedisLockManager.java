@@ -34,6 +34,7 @@ public class RedisLockManager extends AbstractLockManager implements Initialize 
      */
     private Locker locker;
 
+    //同理可知，如果storge
     @Override
     public void init() {
         locker = RedisLockerFactory.getLocker();

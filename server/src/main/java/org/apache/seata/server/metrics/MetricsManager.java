@@ -30,6 +30,7 @@ import static org.apache.seata.common.DefaultValues.DEFAULT_METRICS_ENABLED;
 
 /**
  * Metrics manager for init
+ * 主要是对Metrics进行初始化
  *
  */
 public class MetricsManager {
@@ -51,6 +52,8 @@ public class MetricsManager {
         boolean enabled = ConfigurationFactory.getInstance().getBoolean(
             ConfigurationKeys.METRICS_PREFIX + ConfigurationKeys.METRICS_ENABLED, DEFAULT_METRICS_ENABLED);
         if (enabled) {
+            // 现在在进行初始化的时候，使用的是单例方式进行初始化，这里的话就能看出，不支持对应的多个实例的初始化
+            // 那么这里本来使用的是RegistryFactory, 继续查看这个方法
             registry = RegistryFactory.getInstance();
             if (registry != null) {
                 List<Exporter> exporters = ExporterFactory.getInstanceList();

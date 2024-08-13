@@ -382,6 +382,7 @@ public class FileConfiguration extends AbstractConfiguration {
         @Override
         public void onChangeEvent(ConfigurationChangeEvent event) {
             while (true) {
+                // 从文件中实例化File的Listener。
                 boolean enabled = Boolean.parseBoolean(System.getProperty("file.listener.enabled", "true"));
                 if (enabled) {
                     for (String dataId : dataIdMap.keySet()) {

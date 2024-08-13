@@ -49,6 +49,8 @@ public class EnhancedServiceLoader {
      */
     private static final ConcurrentMap<Class<?>, InnerEnhancedServiceLoader<?>> SERVICE_LOADERS =
             new ConcurrentHashMap<>();
+    //扩展Class->扩展实现实例
+    private static final ConcurrentMap<Class<?>, Object> EXTENSION_INSTANCES = new ConcurrentHashMap<>(64);
 
     /**
      * Specify classLoader to load the service provider

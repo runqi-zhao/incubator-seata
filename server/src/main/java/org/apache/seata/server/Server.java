@@ -89,6 +89,7 @@ public class Server {
                 .addApplicationListener((ApplicationListener<?>)coordinator);
         }
         //log store mode : file, db, redis
+        //log store 进行初始化
         SessionHolder.init();
         LockerManagerFactory.init();
         coordinator.init();

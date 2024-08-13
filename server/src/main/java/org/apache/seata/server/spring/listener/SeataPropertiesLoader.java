@@ -52,8 +52,11 @@ public class SeataPropertiesLoader implements ApplicationContextInitializer<Conf
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {
         ConfigurableEnvironment environment = applicationContext.getEnvironment();
+        // Load the configuration of the original configuration file
         FileConfiguration configuration = ConfigurationFactory.getOriginFileInstanceRegistry();
+        //读取文件中的相关管配置
         FileConfig fileConfig = configuration.getFileConfig();
+        //获得其中的相关关键字
         Map<String, Object> configs = fileConfig.getAllConfig();
         if (CollectionUtils.isNotEmpty(configs)) {
             Optional<FileConfiguration> originFileInstance = ConfigurationFactory.getOriginFileInstance();

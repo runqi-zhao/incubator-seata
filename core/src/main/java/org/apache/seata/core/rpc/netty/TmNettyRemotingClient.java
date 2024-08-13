@@ -246,6 +246,8 @@ public final class TmNettyRemotingClient extends AbstractNettyRemotingClient {
 
     private void registerProcessor() {
         // 1.registry TC response processor
+        // 注册Seata-Server返回的Response的处理Processor，用于Client主动发起Request，
+        // Seata-Server返回的Response
         ClientOnResponseProcessor onResponseProcessor =
                 new ClientOnResponseProcessor(mergeMsgMap, super.getFutures(), getTransactionMessageHandler());
         super.registerProcessor(MessageType.TYPE_SEATA_MERGE_RESULT, onResponseProcessor, null);
@@ -257,6 +259,8 @@ public final class TmNettyRemotingClient extends AbstractNettyRemotingClient {
         super.registerProcessor(MessageType.TYPE_REG_CLT_RESULT, onResponseProcessor, null);
         super.registerProcessor(MessageType.TYPE_BATCH_RESULT_MSG, onResponseProcessor, null);
         // 2.registry heartbeat message processor
+        // ClientOnResponseProcessor负责把Client发送的Request和Seata-Server
+        // 返回的Response对应起来，从而实现Rpc
         ClientHeartbeatProcessor clientHeartbeatProcessor = new ClientHeartbeatProcessor();
         super.registerProcessor(MessageType.TYPE_HEARTBEAT_MSG, clientHeartbeatProcessor, null);
     }

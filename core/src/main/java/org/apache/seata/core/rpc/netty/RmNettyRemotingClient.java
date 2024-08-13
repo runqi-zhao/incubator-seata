@@ -92,6 +92,7 @@ public final class RmNettyRemotingClient extends AbstractNettyRemotingClient {
                                   ThreadPoolExecutor messageExecutor) {
         super(nettyClientConfig, eventExecutorGroup, messageExecutor, TransactionRole.RMROLE);
         // set enableClientBatchSendRequest
+        //TODO：现在仅仅支持单例，这里的话需要进行改造
         Configuration configuration = ConfigurationFactory.getInstance();
         this.enableClientBatchSendRequest = configuration.getBoolean(ConfigurationKeys.ENABLE_RM_CLIENT_BATCH_SEND_REQUEST,
                 ConfigurationFactory.getInstance().getBoolean(ConfigurationKeys.ENABLE_CLIENT_BATCH_SEND_REQUEST,DefaultValues.DEFAULT_ENABLE_RM_CLIENT_BATCH_SEND_REQUEST));

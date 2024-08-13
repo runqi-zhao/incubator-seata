@@ -43,6 +43,7 @@ public class TMClient {
      * @param secretKey               the secret key
      */
     public static void init(String applicationId, String transactionServiceGroup, String accessKey, String secretKey) {
+        //TODO: 这里其实就是设计到那天王特哥讲解的东西
         TmNettyRemotingClient tmNettyRemotingClient = TmNettyRemotingClient.getInstance(applicationId, transactionServiceGroup, accessKey, secretKey);
         tmNettyRemotingClient.init();
     }

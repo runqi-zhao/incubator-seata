@@ -43,6 +43,9 @@ public class SeataDataSourceAutoConfiguration {
     /**
      * The bean seataAutoDataSourceProxyCreator.
      */
+    /**
+     * 负责为Spring中的所有DataSource生成代理对象，从而拦截SQL的执行，在SQL执行前后实现seata的逻辑
+     */
     @Bean(BEAN_NAME_SEATA_AUTO_DATA_SOURCE_PROXY_CREATOR)
     @ConditionalOnMissingBean(SeataAutoDataSourceProxyCreator.class)
     public static SeataAutoDataSourceProxyCreator seataAutoDataSourceProxyCreator(SeataProperties seataProperties) {

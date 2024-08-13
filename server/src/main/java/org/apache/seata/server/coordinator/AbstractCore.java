@@ -64,6 +64,7 @@ public abstract class AbstractCore implements Core {
 
     protected LockManager lockManager = LockerManagerFactory.getLockManager();
 
+    //TODO：服务端相关代码，暂时不需要进行改造
     private static final Configuration CONFIG = ConfigurationFactory.getInstance();
     private int appDataErrSize ;
     private boolean throwDataSizeExp ;

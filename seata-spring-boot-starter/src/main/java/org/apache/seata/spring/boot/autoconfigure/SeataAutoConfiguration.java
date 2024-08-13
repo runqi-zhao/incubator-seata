@@ -45,6 +45,7 @@ import static org.apache.seata.spring.boot.autoconfigure.StarterConstants.SEATA_
 @ConditionalOnProperty(prefix = SEATA_PREFIX, name = "enabled", havingValue = "true", matchIfMissing = true)
 @AutoConfigureAfter({SeataCoreAutoConfiguration.class})
 public class SeataAutoConfiguration {
+    // Logger
     private static final Logger LOGGER = LoggerFactory.getLogger(SeataAutoConfiguration.class);
 
     @Bean(BEAN_NAME_FAILURE_HANDLER)
@@ -53,6 +54,7 @@ public class SeataAutoConfiguration {
         return new DefaultFailureHandlerImpl();
     }
 
+    // GlobalTransactionScanner负责添加GlobalTransactionScanner注解的方法添加拦截器，并且负责初始化RM、TM
     @Bean
     @DependsOn({BEAN_NAME_SPRING_APPLICATION_CONTEXT_PROVIDER, BEAN_NAME_FAILURE_HANDLER})
     @ConditionalOnMissingBean(GlobalTransactionScanner.class)
@@ -62,6 +64,9 @@ public class SeataAutoConfiguration {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Automatically configure Seata");
         }
+
+        //下面的话使用一些了配置文件的属性，比如applicationId、txServiceGroup、scanPackages、excludesForScanning、accessKey、secretKey
+        //然后用户可以自己设置对应的属性。
 
         // set bean factory
         GlobalTransactionScanner.setBeanFactory(beanFactory);

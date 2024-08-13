@@ -100,15 +100,20 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
 
     private static final String SPRING_TRANSACTION_INTERCEPTOR_CLASS_NAME = "org.springframework.transaction.interceptor.TransactionInterceptor";
 
+    // PROXYED_SET存储已经代理过的实例，防止重复处理
     private static final Set<String> PROXYED_SET = new HashSet<>();
     private static final Set<String> EXCLUDE_BEAN_NAME_SET = new HashSet<>();
     private static final Set<ScannerChecker> SCANNER_CHECKER_SET = new LinkedHashSet<>();
 
     private static ConfigurableListableBeanFactory beanFactory;
 
+    // interceptor字段是对应一个代理对象的拦截器，
+    // 可以认为是一个临时变量，有效期是一个被代理对象
     private MethodInterceptor interceptor;
 
+    // applicationId是一个服务的唯一标识，对应springcloud项目中的spring.application.name
     private final String applicationId;
+    // 事务的分组标识，参考文章wiki：https://seata.apache.org/zh-cn/docs/user/txgroup/transaction-group/
     private final String txServiceGroup;
     private static String accessKey;
     private static String secretKey;
@@ -244,11 +249,14 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
             throw new IllegalArgumentException(String.format("applicationId: %s, txServiceGroup: %s", applicationId, txServiceGroup));
         }
         //init TM
+        // 初始化 TM，本质就是创建一个tm的netty客户端，然后向tc注册
         TMClient.init(applicationId, txServiceGroup, accessKey, secretKey);
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Transaction Manager Client is initialized. applicationId[{}] txServiceGroup[{}]", applicationId, txServiceGroup);
         }
         //init RM
+        // 初始化 RM，本质就是创建一个rm的netty客户端，然后向tc注册
+        //TODO:不出意外改造的就是这里，改造的目的是为了支持多Client的模式
         RMClient.init(applicationId, txServiceGroup);
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Resource Manager is initialized. applicationId[{}] txServiceGroup[{}]", applicationId, txServiceGroup);
@@ -257,6 +265,7 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Global Transaction Clients are initialized. ");
         }
+        //注册钩子事件，封装销毁操作
         registerSpringShutdownHook();
 
     }
@@ -272,7 +281,9 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
 
     /**
      * The following will be scanned, and added corresponding interceptor:
+     * 将扫描以下内容，并添加相应的拦截器：
      * <p>
+     *  首先是TM模式，这种模式下尝试
      * TM:
      *
      * @see org.apache.seata.spring.annotation.GlobalTransactional // TM annotation
@@ -299,6 +310,8 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
         }
 
         try {
+            //这部分加上synchronized，具体功能可能还需要进行查看
+            // TODO：这里的synchronized是为了保证PROXYED_SET和NEED_ENHANCE_BEAN_NAME_SET的一致性，但是这里的逻辑还是需要进一步查看
             synchronized (PROXYED_SET) {
                 if (PROXYED_SET.contains(beanName)) {
                     return bean;
@@ -306,18 +319,26 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
                 if (!NEED_ENHANCE_BEAN_NAME_SET.contains(beanName)) {
                     return bean;
                 }
+                // 每次处理一个被代理对象时先把interceptor置为null，所以interceptor的
+                // 生命周期是一个被代理对象，由于是在另外一个方法getAdvicesAndAdvisorsForBean
+                // 中使用interceptor，所以该interceptor要定义为一个类变量
                 interceptor = null;
+                //判定对应的十五类型，主要判定依据是方法上是否有对应的注解
                 ProxyInvocationHandler proxyInvocationHandler = DefaultInterfaceParser.get().parserInterfaceToProxy(bean, beanName);
                 if (proxyInvocationHandler == null) {
                     return bean;
                 }
 
+                // 创建对应的事务
                 interceptor = new AdapterSpringSeataInterceptor(proxyInvocationHandler);
-
                 LOGGER.info("Bean [{}] with name [{}] would use interceptor [{}]", bean.getClass().getName(), beanName, interceptor.toString());
                 if (!AopUtils.isAopProxy(bean)) {
+                    // 如果bean本身不是Proxy对象，则直接调用父类的wrapIfNecessary生成代理对象即可
+                    // 在父类中会调用getAdvicesAndAdvisorsForBean获取到上面定义的interceptor
                     bean = super.wrapIfNecessary(bean, beanName, cacheKey);
                 } else {
+                    // 如果该bean已经是代理对象了，则直接在代理对象的拦截调用链AdvisedSupport
+                    // 上直接添加新的interceptor即可。
                     AdvisedSupport advised = SpringProxyUtils.getAdvisedSupport(bean);
                     Advisor[] advisor = buildAdvisors(beanName, getAdvicesAndAdvisorsForBean(null, null, null));
                     int pos;
@@ -327,6 +348,7 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
                         advised.addAdvisor(pos, avr);
                     }
                 }
+                // 标识该beanName已经处理过了
                 PROXYED_SET.add(beanName);
                 return bean;
             }
@@ -476,12 +498,14 @@ public class GlobalTransactionScanner extends AbstractAutoProxyCreator
         return new MethodDesc(anno, method);
     }
 
+    //返回wrapIfNecessary方法中计算出的interceptor对象
     @Override
     protected Object[] getAdvicesAndAdvisorsForBean(Class beanClass, String beanName, TargetSource customTargetSource)
             throws BeansException {
         return new Object[]{interceptor};
     }
 
+    //InitializingBean实现方法，spring自动调用
     @Override
     public void afterPropertiesSet() {
         if (disableGlobalTransaction) {

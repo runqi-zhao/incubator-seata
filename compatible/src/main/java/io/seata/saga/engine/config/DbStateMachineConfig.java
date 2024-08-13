@@ -65,6 +65,7 @@ public class DbStateMachineConfig extends DefaultStateMachineConfig implements D
 
     /**
      * Instantiates a new Db state machine config.
+     * 实例化一个新的 Db 状态机配置
      */
     public DbStateMachineConfig() {
         try {
