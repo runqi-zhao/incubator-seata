@@ -28,11 +28,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.seata.common.Constants;
 import org.apache.seata.common.executor.Initialize;
+import org.apache.seata.common.rpc.model.ScopeModel;
+import org.apache.seata.core.rpc.Disposable;
 import org.apache.seata.common.util.CollectionUtils;
 import org.apache.seata.common.util.StringUtils;
 import org.slf4j.Logger;
@@ -41,7 +44,7 @@ import org.slf4j.LoggerFactory;
 /**
  * The type Enhanced service loader.
  */
-public class EnhancedServiceLoader {
+public class EnhancedServiceLoader<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(EnhancedServiceLoader.class);
 
     /**
@@ -265,6 +268,10 @@ public class EnhancedServiceLoader {
         return InnerEnhancedServiceLoader.getServiceLoader(service).getAllExtensionClass(loader, true);
     }
 
+    public void destroy(Class<?> service) {
+        InnerEnhancedServiceLoader.getServiceLoader(service).destroy();
+    }
+
     /**
      * Cannot use TCCL, in the pandora container will cause the class in the plugin not to be loaded
      *
@@ -289,9 +296,14 @@ public class EnhancedServiceLoader {
                 new ConcurrentHashMap<>();
         private final ConcurrentMap<String, List<ExtensionDefinition<S>>> nameToDefinitionsMap = new ConcurrentHashMap<>();
         private final ConcurrentMap<Class<?>, ExtensionDefinition<S>> classToDefinitionMap = new ConcurrentHashMap<>();
+        private final ConcurrentMap<Class<?>, Object> extensionInstances = new ConcurrentHashMap<>();
+        private final ScopeModel scopeModel;
+        private final AtomicBoolean destroyed = new AtomicBoolean();
+        private final ExtensionInjector injector;
 
-        private InnerEnhancedServiceLoader(Class<S> type) {
+        private InnerEnhancedServiceLoader(Class<S> type, ScopeModel scopeModel) {
             this.type = type;
+            this.scopeModel = scopeModel;
         }
 
 
@@ -471,6 +483,7 @@ public class EnhancedServiceLoader {
                 Holder<Object> holder = CollectionUtils.computeIfAbsent(definitionToInstanceMap, definition,
                     key -> new Holder<>());
                 Object instance = holder.get();
+                //TODO:现在这种是通过单例进行创建，这里需要进行更改
                 if (instance == null) {
                     synchronized (holder) {
                         instance = holder.get();
@@ -486,10 +499,18 @@ public class EnhancedServiceLoader {
             }
         }
 
+        @SuppressWarnings("unchecked")
         private S createNewExtension(ExtensionDefinition<S> definition, ClassLoader loader, Class<?>[] argTypes, Object[] args) {
             Class<S> clazz = definition.getServiceClass();
             try {
-                return initInstance(clazz, argTypes, args);
+                //TODO:增加缓存，不再是单例进行创建
+                S instance = (S) extensionInstances.get(clazz);
+                if (instance == null) {
+                    extensionInstances.putIfAbsent(clazz, initInstance(clazz, argTypes, args));
+                    instance = (S)extensionInstances.get(clazz);
+                    //TODO：从dubbo上面看，下面还是需要一些具体参数，这里的话待确定。
+                }
+                return instance;
             } catch (Throwable t) {
                 throw new IllegalStateException("Extension instance(definition: " + definition + ", class: " +
                         type + ")  could not be instantiated: " + t.getMessage(), t);
@@ -707,6 +728,39 @@ public class EnhancedServiceLoader {
                 ((Initialize)s).init();
             }
             return s;
+        }
+
+        private void destroy() {
+            if (!destroyed.compareAndSet(false, true)) {
+                return;
+            }
+            // destroy raw extension instance
+            extensionInstances.forEach((type, instance) -> {
+                //TODO:这里添加了core的依赖，感觉不需要
+                if (instance instanceof Disposable) {
+                    Disposable disposable = (Disposable) instance;
+                    try {
+                        disposable.destroy();
+                    } catch (Exception e) {
+                        LOGGER.error("Error destroying extension {}", disposable, e);
+                    }
+                }
+            });
+            extensionInstances.clear();
+
+            // destroy wrapped extension instance
+            for (Holder<Object> holder : definitionToInstanceMap.values()) {
+                Object wrappedInstance = holder.get();
+                if (wrappedInstance instanceof Disposable) {
+                    Disposable disposable = (Disposable) wrappedInstance;
+                    try {
+                        disposable.destroy();
+                    } catch (Exception e) {
+                        LOGGER.error("Error destroying extension {}", disposable, e);
+                    }
+                }
+            }
+            definitionToInstanceMap.clear();
         }
 
         /**

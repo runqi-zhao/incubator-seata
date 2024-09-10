@@ -84,14 +84,19 @@ public final class ConfigurationFactory {
     }
 
     private static void initOriginConfiguraction() {
+        //加载对应的seata.config.name
         String seataConfigName = System.getProperty(SYSTEM_PROPERTY_SEATA_CONFIG_NAME);
+        //从系统里面进行加载，如果说系统里面存在SEATA_CONFIG_NAME
         if (seataConfigName == null) {
             seataConfigName = System.getenv(ENV_SEATA_CONFIG_NAME);
         }
+        //如果系统里面不存在，seataConfigName变成registry
         if (seataConfigName == null) {
             seataConfigName = REGISTRY_CONF_DEFAULT;
         }
+        //读取seataEnv，拿到其中的值
         String envValue = System.getProperty(ENV_PROPERTY_KEY);
+        //如果不存在，从系统里面拿SEATA_ENV对应的值，进行添加
         if (envValue == null) {
             envValue = System.getenv(ENV_SYSTEM_KEY);
         }
@@ -109,6 +114,7 @@ public final class ConfigurationFactory {
 
     private static volatile Configuration instance = null;
 
+    //TODO:这里的话是单例模型进行创建，多client里面存在多个，这里需要进行更改
     /**
      * Gets instance.
      *

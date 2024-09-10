@@ -48,4 +48,6 @@ public @interface LoadLevel {
      * Scope enum.
      */
     Scope scope() default Scope.SINGLETON;
+
+    Scope getExtensionScope() default Scope.APPLICATION;
 }
